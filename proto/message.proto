@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package model;
+
+option go_package = "github.com/Frankhuex/sanguogao/model;model";
+
+enum ErrorCode {
+  ERROR_CODE_OK = 0;
+  ERROR_CODE_INVALID_PARAM = 1;    // 参数不合法（如名字为空或超长）
+  ERROR_CODE_ROOM_NOT_FOUND = 2;   // 房间不存在
+  ERROR_CODE_ROOM_FULL = 3;        // 房间已满
+  ERROR_CODE_ALREADY_IN_ROOM = 4;  // 已在某个房间中
+  ERROR_CODE_NOT_IN_ROOM = 5;      // 当前不在任何房间中
+  ERROR_CODE_INTERNAL = 99;        // 服务端内部错误
+}
+
+message Packet {
+  uint64 seq = 1;
+  oneof payload {
+    // 基础心跳
+    Ping ping = 10;
+    Pong pong = 11;
+
+    // 客户端请求 & 服务端响应
+    SetNameReq set_name_req = 20;
+    SetNameResp set_name_resp = 21;
+
+    CreateRoomReq create_room_req = 22;
+    CreateRoomResp create_room_resp = 23;
+
+    JoinRoomReq join_room_req = 24;
+    JoinRoomResp join_room_resp = 25;
+
+    LeaveRoomReq leave_room_req = 26;
+    LeaveRoomResp leave_room_resp = 27;
+
+    // 服务端主动推送
+    WelcomePush welcome_push = 49;
+    RoomStatePush room_state_push = 50;
+  }
+}
+
+message Ping {
+  int64 ts = 1;
+}
+
+message Pong {
+  int64 ts = 1;
+}
+
+// 通用视图结构
+message PlayerInfo {
+  string id = 1;
+  string name = 2;
+}
+
+message RoomInfo {
+  string code = 1;
+  string host_id = 2;
+  repeated PlayerInfo players = 3;
+}
+
+// 1. 设置/修改昵称
+message SetNameReq {
+  string name = 1;
+}
+
+message SetNameResp {
+  ErrorCode code = 1;
+  string message = 2;
+  PlayerInfo self = 3;
+}
+
+// 2. 创建房间
+message CreateRoomReq {}
+
+message CreateRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+  RoomInfo room = 3;
+}
+
+// 3. 加入房间
+message JoinRoomReq {
+  string room_code = 1;
+}
+
+message JoinRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+  RoomInfo room = 3;
+}
+
+// 4. 主动离开房间
+message LeaveRoomReq {}
+
+message LeaveRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+// 5. 连接成功欢迎推送（告知服务端分配的 id 和默认昵称）
+message WelcomePush {
+  PlayerInfo self = 1;
+}
+
+// 6. 房间状态变更推送（成员加入/离开/改名/房主变更）
+message RoomStatePush {
+  RoomInfo room = 1;
+}

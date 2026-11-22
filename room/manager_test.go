@@ -58,12 +58,12 @@ func TestRoomLifecycle(t *testing.T) {
 	}
 
 	// 5. 房主掉线 -> 自动退房 + 房主顺延给 p2 + 通知 p2
-	discRes := mgr.RemovePlayer(p1.Id)
-	if discRes.RoomInfo == nil || discRes.RoomInfo.HostId != p2.Id || len(discRes.RoomInfo.Players) != 1 {
-		t.Fatalf("expected host transfer to p2, got %+v", discRes.RoomInfo)
+	afterLeave, notifyIDs := mgr.RemovePlayer(p1.Id)
+	if afterLeave == nil || afterLeave.HostId != p2.Id || len(afterLeave.Players) != 1 {
+		t.Fatalf("expected host transfer to p2, got %+v", afterLeave)
 	}
-	if len(discRes.NotifyIDs) != 1 || discRes.NotifyIDs[0] != p2.Id {
-		t.Fatalf("expected notify [%s], got %v", p2.Id, discRes.NotifyIDs)
+	if len(notifyIDs) != 1 || notifyIDs[0] != p2.Id {
+		t.Fatalf("expected notify [%s], got %v", p2.Id, notifyIDs)
 	}
 
 	// 6. 最后一人离开 -> 房间销毁
