@@ -1,0 +1,1 @@
+protoc -I=proto --go_out=model --go_opt=paths=source_relative proto/*.proto

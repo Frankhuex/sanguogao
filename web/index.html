@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三国高 - 房间联调</title>
+  <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.4.0/dist/protobuf.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #22c55e;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .title { font-size: 20px; font-weight: 700; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+    .dot.connected { background: var(--success); }
+    .self-info {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .self-info strong { color: var(--text); }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus { border-color: var(--primary); }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.secondary {
+      background: #334155;
+    }
+    button.secondary:hover { background: #475569; }
+    button.danger {
+      background: var(--danger);
+    }
+    button.danger:hover { background: var(--danger-hover); }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+    .room-code-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .room-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #60a5fa;
+    }
+    .player-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .player-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+    .badges {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .badge.host { background: rgba(245, 158, 11, 0.2); color: var(--warn); }
+    .badge.me { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .toast {
+      font-size: 13px;
+      color: #fca5a5;
+      min-height: 18px;
+      margin-top: 8px;
+    }
+    .log-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      height: 160px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .log-box .err { color: #fca5a5; }
+    .log-box .ok { color: #86efac; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部状态 -->
+    <div class="card">
+      <div class="header">
+        <div class="title">三国高 · 房间测试</div>
+        <div class="row">
+          <span class="status">
+            <span id="statusDot" class="dot"></span>
+            <span id="statusText">未连接</span>
+          </span>
+          <button id="reconnectBtn" class="secondary" style="padding: 6px 12px; font-size: 12px;">重连</button>
+        </div>
+      </div>
+      <div class="self-info">
+        <span>我的 ID：<strong id="selfId">-</strong></span>
+        <span>当前昵称：<strong id="selfName">-</strong></span>
+      </div>
+    </div>
+
+    <!-- 昵称设置（大厅和房内均可随时改名） -->
+    <div class="card">
+      <div class="section-title">设置 / 修改昵称</div>
+      <div class="row">
+        <input id="nameInput" type="text" maxlength="16" placeholder="输入新昵称（1~16字）" />
+        <button id="setNameBtn">保存昵称</button>
+      </div>
+      <div id="errorTip" class="toast"></div>
+    </div>
+
+    <!-- 大厅视图 -->
+    <div id="lobbyCard" class="card">
+      <div class="section-title">大厅</div>
+      <button id="createRoomBtn" style="width: 100%;">创建房间（随机 6 位房间号）</button>
+      <div class="divider"></div>
+      <div class="row">
+        <input id="roomCodeInput" type="text" maxlength="6" placeholder="输入 6 位房间号（不区分大小写）" />
+        <button id="joinRoomBtn" class="secondary">加入房间</button>
+      </div>
+    </div>
+
+    <!-- 房间视图 -->
+    <div id="roomCard" class="card hidden">
+      <div class="room-header">
+        <div class="room-code-box">
+          <span style="font-size: 13px; color: var(--muted);">房间号</span>
+          <span id="roomCodeDisplay" class="room-code">------</span>
+          <button id="copyCodeBtn" class="secondary" style="padding: 5px 10px; font-size: 12px;">复制</button>
+        </div>
+        <button id="leaveRoomBtn" class="danger">退出房间</button>
+      </div>
+      <div class="section-title">房间成员（<span id="playerCount">0</span> / 10）</div>
+      <ul id="playerList" class="player-list"></ul>
+    </div>
+
+    <!-- 通信日志 -->
+    <div class="card">
+      <div class="section-title">WebSocket 事件日志</div>
+      <div id="logBox" class="log-box"></div>
+    </div>
+  </div>
+
+  <script>
+    let Packet = null;
+    let ws = null;
+    let seq = 0;
+    let selfPlayer = null;
+    let currentRoom = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function log(msg, cls = "") {
+      const time = new Date().toTimeString().slice(0, 8);
+      const line = document.createElement("div");
+      if (cls) line.className = cls;
+      line.textContent = `[${time}] ${msg}`;
+      const box = $("logBox");
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function showError(msg) {
+      $("errorTip").textContent = msg || "";
+    }
+
+    function setConnected(connected) {
+      $("statusDot").classList.toggle("connected", connected);
+      $("statusText").textContent = connected ? "已连接" : "已断开";
+      $("setNameBtn").disabled = !connected;
+      $("createRoomBtn").disabled = !connected;
+      $("joinRoomBtn").disabled = !connected;
+      $("leaveRoomBtn").disabled = !connected;
+    }
+
+    function renderSelf() {
+      $("selfId").textContent = selfPlayer ? selfPlayer.id : "-";
+      $("selfName").textContent = selfPlayer ? selfPlayer.name : "-";
+    }
+
+    function renderRoom() {
+      if (!currentRoom) {
+        $("lobbyCard").classList.remove("hidden");
+        $("roomCard").classList.add("hidden");
+        return;
+      }
+      $("lobbyCard").classList.add("hidden");
+      $("roomCard").classList.remove("hidden");
+      $("roomCodeDisplay").textContent = currentRoom.code;
+
+      const players = currentRoom.players || [];
+      $("playerCount").textContent = players.length;
+
+      const list = $("playerList");
+      list.innerHTML = "";
+      for (const p of players) {
+        const li = document.createElement("li");
+        li.className = "player-item";
+
+        const left = document.createElement("span");
+        left.textContent = p.name;
+
+        const badges = document.createElement("span");
+        badges.className = "badges";
+
+        if (p.id === currentRoom.hostId) {
+          const b = document.createElement("span");
+          b.className = "badge host";
+          b.textContent = "房主";
+          badges.appendChild(b);
+        }
+        if (selfPlayer && p.id === selfPlayer.id) {
+          const b = document.createElement("span");
+          b.className = "badge me";
+          b.textContent = "我";
+          badges.appendChild(b);
+        }
+
+        const idTag = document.createElement("span");
+        idTag.style.cssText = "font-size:12px;color:#64748b;font-family:monospace;";
+        idTag.textContent = "#" + p.id.slice(-4);
+        badges.appendChild(idTag);
+
+        li.appendChild(left);
+        li.appendChild(badges);
+        list.appendChild(li);
+      }
+    }
+
+    function sendPacket(payloadObj) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        showError("WebSocket 未连接");
+        return;
+      }
+      showError("");
+      seq += 1;
+      const msg = Packet.create({ seq, ...payloadObj });
+      const buf = Packet.encode(msg).finish();
+      ws.send(buf);
+    }
+
+    function handlePacket(pkt) {
+      switch (pkt.payload) {
+        case "welcomePush": {
+          selfPlayer = pkt.welcomePush.self;
+          renderSelf();
+          $("nameInput").value = selfPlayer.name;
+          log(`WelcomePush: id=${selfPlayer.id}, name=${selfPlayer.name}`, "ok");
+          break;
+        }
+        case "setNameResp": {
+          const r = pkt.setNameResp;
+          if (r.code !== 0) {
+            showError(r.message || "改名失败");
+            log(`SetNameResp 失败: ${r.message}`, "err");
+            return;
+          }
+          selfPlayer = r.self;
+          renderSelf();
+          if (currentRoom && currentRoom.players) {
+            for (const p of currentRoom.players) {
+              if (p.id === selfPlayer.id) p.name = selfPlayer.name;
+            }
+            renderRoom();
+          }
+          log(`改名成功: ${selfPlayer.name}`, "ok");
+          break;
+        }
+        case "createRoomResp": {
+          const r = pkt.createRoomResp;
+          if (r.code !== 0) {
+            showError(r.message || "创建房间失败");
+            log(`CreateRoomResp 失败: ${r.message}`, "err");
+            return;
+          }
+          currentRoom = r.room;
+          renderRoom();
+          log(`创建房间成功: ${currentRoom.code}`, "ok");
+          break;
+        }
+        case "joinRoomResp": {
+          const r = pkt.joinRoomResp;
+          if (r.code !== 0) {
+            showError(r.message || "加入房间失败");
+            log(`JoinRoomResp 失败: ${r.message}`, "err");
+            return;
+          }
+          currentRoom = r.room;
+          renderRoom();
+          log(`加入房间成功: ${currentRoom.code} (当前 ${currentRoom.players.length} 人)`, "ok");
+          break;
+        }
+        case "leaveRoomResp": {
+          const r = pkt.leaveRoomResp;
+          if (r.code !== 0) {
+            showError(r.message || "退出房间失败");
+            log(`LeaveRoomResp 失败: ${r.message}`, "err");
+            return;
+          }
+          log(`已退出房间 ${currentRoom ? currentRoom.code : ""}`, "ok");
+          currentRoom = null;
+          renderRoom();
+          break;
+        }
+        case "roomStatePush": {
+          currentRoom = pkt.roomStatePush.room;
+          renderRoom();
+          const names = (currentRoom.players || []).map((p) => p.name).join(", ");
+          log(`RoomStatePush: [${currentRoom.code}] 成员(${currentRoom.players.length}): ${names}`);
+          break;
+        }
+        default:
+          log(`收到消息: ${pkt.payload}`);
+      }
+    }
+
+    function connect() {
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      currentRoom = null;
+      selfPlayer = null;
+      renderSelf();
+      renderRoom();
+
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      const url = `${proto}//${location.host}/ws`;
+      log(`正在连接 ${url} ...`);
+
+      ws = new WebSocket(url);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        setConnected(true);
+        log("WebSocket 已连接", "ok");
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const pkt = Packet.decode(new Uint8Array(ev.data));
+          handlePacket(pkt);
+        } catch (err) {
+          log(`解码失败: ${err.message}`, "err");
+        }
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        currentRoom = null;
+        renderRoom();
+        log("WebSocket 已断开", "err");
+      };
+
+      ws.onerror = () => {
+        log("WebSocket 连接出错", "err");
+      };
+    }
+
+    // 绑定按钮事件
+    $("reconnectBtn").onclick = connect;
+
+    $("setNameBtn").onclick = () => {
+      sendPacket({ setNameReq: { name: $("nameInput").value } });
+    };
+    $("nameInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") $("setNameBtn").click();
+    });
+
+    $("createRoomBtn").onclick = () => {
+      sendPacket({ createRoomReq: {} });
+    };
+
+    $("joinRoomBtn").onclick = () => {
+      sendPacket({ joinRoomReq: { roomCode: $("roomCodeInput").value } });
+    };
+    $("roomCodeInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") $("joinRoomBtn").click();
+    });
+
+    $("leaveRoomBtn").onclick = () => {
+      sendPacket({ leaveRoomReq: {} });
+    };
+
+    $("copyCodeBtn").onclick = async () => {
+      if (!currentRoom) return;
+      try {
+        await navigator.clipboard.writeText(currentRoom.code);
+        log(`已复制房间号: ${currentRoom.code}`, "ok");
+      } catch {
+        log("复制失败，请手动复制", "err");
+      }
+    };
+
+    // 加载 proto 并自动建立连接
+    async function init() {
+      setConnected(false);
+      try {
+        const root = await protobuf.load("/proto/message.proto");
+        Packet = root.lookupType("model.Packet");
+        log("Protobuf 协议加载成功", "ok");
+        connect();
+      } catch (err) {
+        showError("加载 Protobuf 协议失败，请确认网络可访问 CDN 或检查服务端");
+        log(`初始化失败: ${err.message}`, "err");
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
