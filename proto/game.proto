@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package model;
+
+option go_package = "github.com/Frankhuex/sanguogao/model;model";
+
+import "common.proto";
+import "card.proto";
+
+// 回合 6 阶段
+enum Phase {
+  PHASE_UNSPECIFIED = 0;
+  PHASE_PREPARE = 1;  // 准备阶段
+  PHASE_JUDGE = 2;    // 判定阶段
+  PHASE_DRAW = 3;     // 摸牌阶段
+  PHASE_PLAY = 4;     // 出牌阶段
+  PHASE_DISCARD = 5;  // 弃牌阶段
+  PHASE_FINISH = 6;   // 结束阶段
+}
+
+// 开局请求（仅房主）
+message StartGameReq {}
+
+message StartGameResp {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+// 玩家公开状态（不含手牌明细）
+message GamePlayerPublic {
+  string id = 1;
+  string name = 2;
+  int32 seat = 3;
+  int32 hp = 4;
+  int32 max_hp = 5;
+  int32 hand_count = 6;
+  bool alive = 7;
+  bool offline = 8;
+}
+
+// 个人视角牌局快照（视野隔离）
+message GameStatePush {
+  string room_code = 1;
+  string current_turn_player_id = 2;
+  Phase phase = 3;
+  int32 draw_pile_count = 4;
+  int32 discard_pile_count = 5;
+  repeated GamePlayerPublic players = 6;
+  repeated CardInfo self_hand = 7;        // 视野隔离：仅当前接收者的手牌
+  string waiting_player_id = 8;
+}
+
+// 询问类型
+enum AskType {
+  ASK_TYPE_UNSPECIFIED = 0;
+  ASK_TYPE_PLAY = 1;          // 出牌阶段空闲点
+  ASK_TYPE_RESPOND_SHAN = 2;  // 响应【杀】出【闪】
+  ASK_TYPE_SAVE_TAO = 3;      // 濒死求【桃】
+  ASK_TYPE_DISCARD = 4;       // 弃牌阶段弃牌
+}
+
+// 服务端向指定玩家发起操作询问
+message GameAskPush {
+  uint64 ask_id = 1;
+  AskType ask_type = 2;
+  int32 timeout_sec = 3;
+  int32 discard_count = 4;     // ASK_DISCARD 需弃置张数
+  string source_player_id = 5; // ASK_RESPOND_SHAN(杀来源) / ASK_SAVE_TAO(濒死角色)
+  int32 slash_remaining = 6;   // ASK_PLAY 剩余可用【杀】次数
+}
+
+// 玩家操作类型
+enum ActionType {
+  ACTION_TYPE_UNSPECIFIED = 0;
+  ACTION_TYPE_USE_CARD = 1;
+  ACTION_TYPE_DISCARD = 2;
+  ACTION_TYPE_PASS = 3;
+}
+
+// 客户端提交操作
+message GameActionReq {
+  uint64 ask_id = 1;
+  ActionType action_type = 2;
+  repeated uint32 card_ids = 3;
+  string target_id = 4;
+}
+
+message GameActionResp {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+// ===== 结构化对局事件（供游戏引擎驱动动画/音效，同时附带可读文本） =====
+
+message TurnStartEvent {
+  string player_id = 1;
+}
+
+message DrawCardsEvent {
+  string player_id = 1;
+  int32 count = 2;
+}
+
+message UseCardEvent {
+  string source_id = 1;
+  string target_id = 2; // 可选（如自用【桃】或打出【闪】时为空或为自己）
+  CardInfo card = 3;
+}
+
+message DiscardCardsEvent {
+  string player_id = 1;
+  repeated CardInfo cards = 2;
+}
+
+message DamageEvent {
+  string source_id = 1;
+  string target_id = 2;
+  int32 amount = 3;
+  DamageElement element = 4;
+}
+
+message RecoverEvent {
+  string target_id = 1;
+  int32 amount = 2;
+}
+
+message NearDeathEvent {
+  string target_id = 1;
+}
+
+message DeathEvent {
+  string target_id = 1;
+}
+
+message GameEventPush {
+  string text = 1; // 可读战报文本（便于日志展示）
+  oneof detail {
+    TurnStartEvent turn_start = 10;
+    DrawCardsEvent draw_cards = 11;
+    UseCardEvent use_card = 12;
+    DiscardCardsEvent discard_cards = 13;
+    DamageEvent damage = 14;
+    RecoverEvent recover = 15;
+    NearDeathEvent near_death = 16;
+    DeathEvent death = 17;
+  }
+}
+
+message GameOverPush {
+  string winner_id = 1;
+  string winner_name = 2;
+}

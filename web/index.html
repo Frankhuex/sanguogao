@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>三国高 - 房间联调</title>
+  <title>三国搞 - V1 联调</title>
   <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.4.0/dist/protobuf.min.js"></script>
   <style>
     :root {
@@ -27,20 +27,20 @@
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: 32px 16px;
+      padding: 24px 16px;
     }
     .container {
       width: 100%;
-      max-width: 560px;
+      max-width: 680px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
     .card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 20px;
+      padding: 18px;
     }
     .header {
       display: flex;
@@ -64,7 +64,7 @@
     }
     .dot.connected { background: var(--success); }
     .self-info {
-      margin-top: 12px;
+      margin-top: 10px;
       font-size: 13px;
       color: var(--muted);
       display: flex;
@@ -72,13 +72,9 @@
       flex-wrap: wrap;
     }
     .self-info strong { color: var(--text); }
-    .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    .row { display: flex; gap: 8px; align-items: center; }
     .section-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--muted);
       margin-bottom: 10px;
@@ -88,7 +84,7 @@
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 9px 12px;
       color: var(--text);
       font-size: 14px;
       outline: none;
@@ -99,7 +95,7 @@
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 10px 16px;
+      padding: 9px 15px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -108,44 +104,30 @@
     }
     button:hover { background: var(--primary-hover); }
     button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.secondary {
-      background: #334155;
-    }
+    button.secondary { background: #334155; }
     button.secondary:hover { background: #475569; }
-    button.danger {
-      background: var(--danger);
-    }
+    button.success { background: #16a34a; }
+    button.success:hover { background: #15803d; }
+    button.danger { background: var(--danger); }
     button.danger:hover { background: var(--danger-hover); }
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 16px 0;
-    }
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
     .room-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       gap: 12px;
+      flex-wrap: wrap;
     }
-    .room-code-box {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .room-code-box { display: flex; align-items: center; gap: 10px; }
     .room-code {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: 3px;
       color: #60a5fa;
     }
-    .player-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .player-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
     .player-item {
       display: flex;
       justify-content: space-between;
@@ -156,11 +138,7 @@
       padding: 10px 14px;
       font-size: 14px;
     }
-    .badges {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
+    .badges { display: flex; gap: 6px; align-items: center; }
     .badge {
       font-size: 11px;
       padding: 2px 7px;
@@ -169,18 +147,108 @@
     }
     .badge.host { background: rgba(245, 158, 11, 0.2); color: var(--warn); }
     .badge.me { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .badge.dead { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .badge.turn { background: rgba(34, 197, 94, 0.2); color: #86efac; }
     .toast {
       font-size: 13px;
       color: #fca5a5;
       min-height: 18px;
       margin-top: 8px;
     }
+    /* 游戏牌桌样式 */
+    .game-meta {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .game-meta strong { color: var(--text); }
+    .seats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .seat-card {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .seat-card.current-turn { border-color: var(--success); }
+    .seat-card.selected-target { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+    .seat-card.dead { opacity: 0.45; cursor: default; }
+    .seat-name { font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .seat-stats { margin-top: 6px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+    .hp { color: #f87171; font-weight: 600; }
+    .ask-banner {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ask-text { font-size: 14px; font-weight: 600; color: #93c5fd; }
+    .hand-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 76px;
+      padding: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .playing-card {
+      width: 66px;
+      height: 86px;
+      background: #f8fafc;
+      color: #0f172a;
+      border-radius: 8px;
+      border: 2px solid #cbd5e1;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .playing-card:hover { transform: translateY(-4px); }
+    .playing-card.selected {
+      transform: translateY(-8px);
+      border-color: var(--warn);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5);
+    }
+    .playing-card.red { color: #dc2626; }
+    .card-top { font-size: 12px; font-weight: 700; }
+    .card-center { font-size: 22px; font-weight: 800; text-align: center; }
+    .game-over-box {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid var(--success);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     .log-box {
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 10px 12px;
-      height: 160px;
+      height: 150px;
       overflow-y: auto;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
@@ -189,6 +257,7 @@
     }
     .log-box .err { color: #fca5a5; }
     .log-box .ok { color: #86efac; }
+    .log-box .evt { color: #fde68a; }
     .hidden { display: none; }
   </style>
 </head>
@@ -197,7 +266,7 @@
     <!-- 顶部状态 -->
     <div class="card">
       <div class="header">
-        <div class="title">三国高 · 房间测试</div>
+        <div class="title">三国搞 · V1 联调</div>
         <div class="row">
           <span class="status">
             <span id="statusDot" class="dot"></span>
@@ -212,8 +281,8 @@
       </div>
     </div>
 
-    <!-- 昵称设置（大厅和房内均可随时改名） -->
-    <div class="card">
+    <!-- 昵称设置 -->
+    <div id="nameCard" class="card">
       <div class="section-title">设置 / 修改昵称</div>
       <div class="row">
         <input id="nameInput" type="text" maxlength="16" placeholder="输入新昵称（1~16字）" />
@@ -233,7 +302,7 @@
       </div>
     </div>
 
-    <!-- 房间视图 -->
+    <!-- 房间等待视图 -->
     <div id="roomCard" class="card hidden">
       <div class="room-header">
         <div class="room-code-box">
@@ -241,15 +310,51 @@
           <span id="roomCodeDisplay" class="room-code">------</span>
           <button id="copyCodeBtn" class="secondary" style="padding: 5px 10px; font-size: 12px;">复制</button>
         </div>
-        <button id="leaveRoomBtn" class="danger">退出房间</button>
+        <div class="row">
+          <button id="startGameBtn" class="success hidden">开始游戏</button>
+          <button id="leaveRoomBtn" class="danger">退出房间</button>
+        </div>
       </div>
       <div class="section-title">房间成员（<span id="playerCount">0</span> / 10）</div>
       <ul id="playerList" class="player-list"></ul>
     </div>
 
-    <!-- 通信日志 -->
+    <!-- 游戏牌桌视图 -->
+    <div id="gameCard" class="card hidden">
+      <div id="gameOverBox" class="game-over-box hidden">
+        <strong id="gameOverText">游戏结束</strong>
+        <button id="backToRoomBtn" class="secondary">返回房间</button>
+      </div>
+
+      <div class="game-meta">
+        <span>当前回合：<strong id="turnPlayerText">-</strong></span>
+        <span>阶段：<strong id="phaseText">-</strong></span>
+        <span>牌堆：<strong id="drawCountText">0</strong> | 弃牌：<strong id="discardCountText">0</strong></span>
+      </div>
+
+      <div class="section-title">场上角色（使用【杀】时点击目标角色选中）</div>
+      <div id="seatsGrid" class="seats-grid"></div>
+
+      <!-- 轮到我操作的提示栏 -->
+      <div id="askBanner" class="ask-banner hidden">
+        <div>
+          <div id="askText" class="ask-text">等待操作</div>
+          <div id="askCountdown" style="font-size: 12px; color: var(--muted); margin-top: 4px;"></div>
+        </div>
+        <div class="row">
+          <button id="confirmActionBtn" class="success">出牌</button>
+          <button id="passActionBtn" class="secondary">结束 / 放弃</button>
+        </div>
+      </div>
+
+      <div class="section-title">我的手牌</div>
+      <div id="handRow" class="hand-row"></div>
+      <div id="gameErrorTip" class="toast"></div>
+    </div>
+
+    <!-- 战报 & 事件日志 -->
     <div class="card">
-      <div class="section-title">WebSocket 事件日志</div>
+      <div class="section-title">战报 / 事件日志</div>
       <div id="logBox" class="log-box"></div>
     </div>
   </div>
@@ -260,8 +365,25 @@
     let seq = 0;
     let selfPlayer = null;
     let currentRoom = null;
+    let gameState = null;
+    let currentAsk = null;
+    let selectedCardIds = new Set();
+    let selectedTargetId = null;
+    let countdownTimer = null;
 
     const $ = (id) => document.getElementById(id);
+
+    const PHASE_NAMES = {
+      1: "准备阶段",
+      2: "判定阶段",
+      3: "摸牌阶段",
+      4: "出牌阶段",
+      5: "弃牌阶段",
+      6: "结束阶段",
+    };
+    const CARD_NAMES = { 1: "杀", 2: "闪", 3: "桃" };
+    const SUIT_SYMBOLS = { 1: "♠", 2: "♥", 3: "♣", 4: "♦" };
+    const NUM_LABELS = { 1: "A", 11: "J", 12: "Q", 13: "K" };
 
     function log(msg, cls = "") {
       const time = new Date().toTimeString().slice(0, 8);
@@ -275,6 +397,7 @@
 
     function showError(msg) {
       $("errorTip").textContent = msg || "";
+      $("gameErrorTip").textContent = msg || "";
     }
 
     function setConnected(connected) {
@@ -291,12 +414,25 @@
       $("selfName").textContent = selfPlayer ? selfPlayer.name : "-";
     }
 
-    function renderRoom() {
+    function renderView() {
+      if (gameState) {
+        $("lobbyCard").classList.add("hidden");
+        $("roomCard").classList.add("hidden");
+        $("nameCard").classList.add("hidden");
+        $("gameCard").classList.remove("hidden");
+        renderGame();
+        return;
+      }
+
+      $("gameCard").classList.add("hidden");
+      $("nameCard").classList.remove("hidden");
+
       if (!currentRoom) {
         $("lobbyCard").classList.remove("hidden");
         $("roomCard").classList.add("hidden");
         return;
       }
+
       $("lobbyCard").classList.add("hidden");
       $("roomCard").classList.remove("hidden");
       $("roomCodeDisplay").textContent = currentRoom.code;
@@ -304,18 +440,22 @@
       const players = currentRoom.players || [];
       $("playerCount").textContent = players.length;
 
+      const isHost = selfPlayer && currentRoom.hostId === selfPlayer.id;
+      const startBtn = $("startGameBtn");
+      startBtn.classList.toggle("hidden", !isHost);
+      startBtn.disabled = players.length < 2;
+      startBtn.textContent = players.length < 2 ? "至少 2 人可开始" : "开始游戏";
+
       const list = $("playerList");
       list.innerHTML = "";
       for (const p of players) {
         const li = document.createElement("li");
         li.className = "player-item";
-
         const left = document.createElement("span");
         left.textContent = p.name;
 
         const badges = document.createElement("span");
         badges.className = "badges";
-
         if (p.id === currentRoom.hostId) {
           const b = document.createElement("span");
           b.className = "badge host";
@@ -328,7 +468,6 @@
           b.textContent = "我";
           badges.appendChild(b);
         }
-
         const idTag = document.createElement("span");
         idTag.style.cssText = "font-size:12px;color:#64748b;font-family:monospace;";
         idTag.textContent = "#" + p.id.slice(-4);
@@ -340,6 +479,157 @@
       }
     }
 
+    function findPlayerName(id) {
+      if (!gameState || !gameState.players) return id;
+      const p = gameState.players.find((x) => x.id === id);
+      return p ? p.name : id;
+    }
+
+    function renderGame() {
+      if (!gameState) return;
+      $("turnPlayerText").textContent = findPlayerName(gameState.currentTurnPlayerId);
+      $("phaseText").textContent = PHASE_NAMES[gameState.phase] || "-";
+      $("drawCountText").textContent = gameState.drawPileCount || 0;
+      $("discardCountText").textContent = gameState.discardPileCount || 0;
+
+      // 渲染座位
+      const grid = $("seatsGrid");
+      grid.innerHTML = "";
+      for (const p of gameState.players || []) {
+        const div = document.createElement("div");
+        div.className = "seat-card";
+        if (!p.alive) div.classList.add("dead");
+        if (p.id === gameState.currentTurnPlayerId) div.classList.add("current-turn");
+        if (p.id === selectedTargetId) div.classList.add("selected-target");
+
+        const isMe = selfPlayer && p.id === selfPlayer.id;
+        div.onclick = () => {
+          if (!p.alive || isMe) return;
+          selectedTargetId = selectedTargetId === p.id ? null : p.id;
+          renderGame();
+        };
+
+        const nameRow = document.createElement("div");
+        nameRow.className = "seat-name";
+        nameRow.innerHTML = `<span>${p.name}${isMe ? " (我)" : ""}</span>`;
+        const tag = document.createElement("span");
+        if (!p.alive) {
+          tag.className = "badge dead";
+          tag.textContent = "阵亡";
+        } else if (p.id === gameState.waitingPlayerId) {
+          tag.className = "badge turn";
+          tag.textContent = "思考中";
+        } else if (p.offline) {
+          tag.className = "badge dead";
+          tag.textContent = "托管";
+        }
+        nameRow.appendChild(tag);
+
+        const stats = document.createElement("div");
+        stats.className = "seat-stats";
+        stats.innerHTML = `<span class="hp">♥ ${p.hp}/${p.maxHp}</span><span>手牌: ${p.handCount}</span>`;
+
+        div.appendChild(nameRow);
+        div.appendChild(stats);
+        grid.appendChild(div);
+      }
+
+      // 渲染操作提示栏
+      const banner = $("askBanner");
+      if (currentAsk) {
+        banner.classList.remove("hidden");
+        const confirmBtn = $("confirmActionBtn");
+        const passBtn = $("passActionBtn");
+        passBtn.classList.remove("hidden");
+
+        switch (currentAsk.askType) {
+          case 1: // PLAY
+            $("askText").textContent = `你的出牌阶段（剩余【杀】: ${currentAsk.slashRemaining}）`;
+            confirmBtn.textContent = "使用选中牌";
+            passBtn.textContent = "结束出牌";
+            break;
+          case 2: // RESPOND_SHAN
+            $("askText").textContent = `${findPlayerName(currentAsk.sourcePlayerId)} 对你出了【杀】，请出【闪】或放弃`;
+            confirmBtn.textContent = "打出【闪】";
+            passBtn.textContent = "放弃（扣血）";
+            break;
+          case 3: // SAVE_TAO
+            $("askText").textContent = `${findPlayerName(currentAsk.sourcePlayerId)} 濒死！是否使用【桃】相救？`;
+            confirmBtn.textContent = "使用【桃】";
+            passBtn.textContent = "不救";
+            break;
+          case 4: // DISCARD
+            $("askText").textContent = `弃牌阶段：请选中 ${currentAsk.discardCount} 张手牌弃置`;
+            confirmBtn.textContent = `确认弃置 (${selectedCardIds.size}/${currentAsk.discardCount})`;
+            passBtn.classList.add("hidden");
+            break;
+        }
+      } else {
+        banner.classList.add("hidden");
+      }
+
+      // 渲染我的手牌
+      const handRow = $("handRow");
+      handRow.innerHTML = "";
+      for (const c of gameState.selfHand || []) {
+        const cardEl = document.createElement("div");
+        cardEl.className = "playing-card";
+        if (c.suit === 2 || c.suit === 4) cardEl.classList.add("red");
+        if (selectedCardIds.has(c.id)) cardEl.classList.add("selected");
+
+        const numStr = NUM_LABELS[c.number] || String(c.number);
+        cardEl.innerHTML = `
+          <div class="card-top">${SUIT_SYMBOLS[c.suit] || ""}${numStr}</div>
+          <div class="card-center">${CARD_NAMES[c.type] || "?"}</div>
+          <div style="font-size:10px;color:#64748b;text-align:right;">#${c.id}</div>
+        `;
+
+        cardEl.onclick = () => {
+          if (!currentAsk) return;
+          if (currentAsk.askType === 4) {
+            if (selectedCardIds.has(c.id)) {
+              selectedCardIds.delete(c.id);
+            } else {
+              selectedCardIds.add(c.id);
+            }
+          } else {
+            if (selectedCardIds.has(c.id)) {
+              selectedCardIds.clear();
+            } else {
+              selectedCardIds = new Set([c.id]);
+            }
+          }
+          renderGame();
+        };
+        handRow.appendChild(cardEl);
+      }
+    }
+
+    function startCountdown(sec) {
+      if (countdownTimer) clearInterval(countdownTimer);
+      let left = sec || 20;
+      $("askCountdown").textContent = `剩余思考时间：${left}s`;
+      countdownTimer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          $("askCountdown").textContent = "已超时，等待托管...";
+          return;
+        }
+        $("askCountdown").textContent = `剩余思考时间：${left}s`;
+      }, 1000);
+    }
+
+    function clearAsk() {
+      currentAsk = null;
+      selectedCardIds.clear();
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+    }
+
     function sendPacket(payloadObj) {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         showError("WebSocket 未连接");
@@ -348,8 +638,7 @@
       showError("");
       seq += 1;
       const msg = Packet.create({ seq, ...payloadObj });
-      const buf = Packet.encode(msg).finish();
-      ws.send(buf);
+      ws.send(Packet.encode(msg).finish());
     }
 
     function handlePacket(pkt) {
@@ -358,14 +647,13 @@
           selfPlayer = pkt.welcomePush.self;
           renderSelf();
           $("nameInput").value = selfPlayer.name;
-          log(`WelcomePush: id=${selfPlayer.id}, name=${selfPlayer.name}`, "ok");
+          log(`已上线: ${selfPlayer.name} (${selfPlayer.id})`, "ok");
           break;
         }
         case "setNameResp": {
           const r = pkt.setNameResp;
           if (r.code !== 0) {
             showError(r.message || "改名失败");
-            log(`SetNameResp 失败: ${r.message}`, "err");
             return;
           }
           selfPlayer = r.self;
@@ -374,7 +662,7 @@
             for (const p of currentRoom.players) {
               if (p.id === selfPlayer.id) p.name = selfPlayer.name;
             }
-            renderRoom();
+            renderView();
           }
           log(`改名成功: ${selfPlayer.name}`, "ok");
           break;
@@ -383,11 +671,10 @@
           const r = pkt.createRoomResp;
           if (r.code !== 0) {
             showError(r.message || "创建房间失败");
-            log(`CreateRoomResp 失败: ${r.message}`, "err");
             return;
           }
           currentRoom = r.room;
-          renderRoom();
+          renderView();
           log(`创建房间成功: ${currentRoom.code}`, "ok");
           break;
         }
@@ -395,35 +682,87 @@
           const r = pkt.joinRoomResp;
           if (r.code !== 0) {
             showError(r.message || "加入房间失败");
-            log(`JoinRoomResp 失败: ${r.message}`, "err");
             return;
           }
           currentRoom = r.room;
-          renderRoom();
-          log(`加入房间成功: ${currentRoom.code} (当前 ${currentRoom.players.length} 人)`, "ok");
+          renderView();
+          log(`加入房间成功: ${currentRoom.code}`, "ok");
           break;
         }
         case "leaveRoomResp": {
           const r = pkt.leaveRoomResp;
           if (r.code !== 0) {
             showError(r.message || "退出房间失败");
-            log(`LeaveRoomResp 失败: ${r.message}`, "err");
             return;
           }
-          log(`已退出房间 ${currentRoom ? currentRoom.code : ""}`, "ok");
+          log(`已退出房间`, "ok");
           currentRoom = null;
-          renderRoom();
+          renderView();
           break;
         }
         case "roomStatePush": {
           currentRoom = pkt.roomStatePush.room;
-          renderRoom();
-          const names = (currentRoom.players || []).map((p) => p.name).join(", ");
-          log(`RoomStatePush: [${currentRoom.code}] 成员(${currentRoom.players.length}): ${names}`);
+          if (!gameState) renderView();
           break;
         }
-        default:
-          log(`收到消息: ${pkt.payload}`);
+        case "startGameResp": {
+          const r = pkt.startGameResp;
+          if (r.code !== 0) {
+            showError(r.message || "无法开始游戏");
+            log(`开始游戏失败: ${r.message}`, "err");
+          }
+          break;
+        }
+        case "gameStatePush": {
+          gameState = pkt.gameStatePush;
+          $("gameOverBox").classList.add("hidden");
+          if (currentAsk && gameState.waitingPlayerId !== selfPlayer?.id) {
+            clearAsk();
+          }
+          renderView();
+          break;
+        }
+        case "gameAskPush": {
+          currentAsk = pkt.gameAskPush;
+          selectedCardIds.clear();
+          // 默认选中第一个存活的对手，方便快速出杀
+          if (currentAsk.askType === 1 && gameState) {
+            const aliveOpp = (gameState.players || []).find(
+              (p) => p.alive && p.id !== selfPlayer?.id
+            );
+            if (aliveOpp && (!selectedTargetId || !gameState.players.find((p) => p.id === selectedTargetId && p.alive))) {
+              selectedTargetId = aliveOpp.id;
+            }
+          }
+          startCountdown(currentAsk.timeoutSec);
+          renderView();
+          break;
+        }
+        case "gameActionResp": {
+          const r = pkt.gameActionResp;
+          if (r.code !== 0) {
+            showError(r.message || "操作不合法");
+            log(`操作被拒绝: ${r.message}`, "err");
+          } else {
+            clearAsk();
+            renderView();
+          }
+          break;
+        }
+        case "gameEventPush": {
+          log(`⚔️ ${pkt.gameEventPush.text}`, "evt");
+          break;
+        }
+        case "gameOverPush": {
+          clearAsk();
+          const w = pkt.gameOverPush;
+          $("gameOverText").textContent = w.winnerName
+            ? `🏆 游戏结束！${w.winnerName} 获胜！`
+            : "游戏结束（平局）";
+          $("gameOverBox").classList.remove("hidden");
+          renderView();
+          break;
+        }
       }
     }
 
@@ -433,66 +772,83 @@
         ws = null;
       }
       currentRoom = null;
+      gameState = null;
       selfPlayer = null;
+      clearAsk();
       renderSelf();
-      renderRoom();
+      renderView();
 
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
-      const url = `${proto}//${location.host}/ws`;
-      log(`正在连接 ${url} ...`);
-
-      ws = new WebSocket(url);
+      ws = new WebSocket(`${proto}//${location.host}/ws`);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
         setConnected(true);
         log("WebSocket 已连接", "ok");
       };
-
       ws.onmessage = (ev) => {
         try {
-          const pkt = Packet.decode(new Uint8Array(ev.data));
-          handlePacket(pkt);
+          handlePacket(Packet.decode(new Uint8Array(ev.data)));
         } catch (err) {
           log(`解码失败: ${err.message}`, "err");
         }
       };
-
       ws.onclose = () => {
         setConnected(false);
         currentRoom = null;
-        renderRoom();
+        gameState = null;
+        clearAsk();
+        renderView();
         log("WebSocket 已断开", "err");
-      };
-
-      ws.onerror = () => {
-        log("WebSocket 连接出错", "err");
       };
     }
 
-    // 绑定按钮事件
     $("reconnectBtn").onclick = connect;
+    $("setNameBtn").onclick = () => sendPacket({ setNameReq: { name: $("nameInput").value } });
+    $("nameInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("setNameBtn").click(); });
+    $("createRoomBtn").onclick = () => sendPacket({ createRoomReq: {} });
+    $("joinRoomBtn").onclick = () => sendPacket({ joinRoomReq: { roomCode: $("roomCodeInput").value } });
+    $("roomCodeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("joinRoomBtn").click(); });
+    $("leaveRoomBtn").onclick = () => sendPacket({ leaveRoomReq: {} });
+    $("startGameBtn").onclick = () => sendPacket({ startGameReq: {} });
 
-    $("setNameBtn").onclick = () => {
-      sendPacket({ setNameReq: { name: $("nameInput").value } });
+    $("confirmActionBtn").onclick = () => {
+      if (!currentAsk) return;
+      const cardIds = Array.from(selectedCardIds);
+      if (currentAsk.askType === 4) {
+        sendPacket({
+          gameActionReq: {
+            askId: currentAsk.askId,
+            actionType: 2, // DISCARD
+            cardIds,
+          },
+        });
+      } else {
+        sendPacket({
+          gameActionReq: {
+            askId: currentAsk.askId,
+            actionType: 1, // USE_CARD
+            cardIds,
+            targetId: selectedTargetId || "",
+          },
+        });
+      }
     };
-    $("nameInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") $("setNameBtn").click();
-    });
 
-    $("createRoomBtn").onclick = () => {
-      sendPacket({ createRoomReq: {} });
+    $("passActionBtn").onclick = () => {
+      if (!currentAsk) return;
+      sendPacket({
+        gameActionReq: {
+          askId: currentAsk.askId,
+          actionType: 3, // PASS
+        },
+      });
     };
 
-    $("joinRoomBtn").onclick = () => {
-      sendPacket({ joinRoomReq: { roomCode: $("roomCodeInput").value } });
-    };
-    $("roomCodeInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") $("joinRoomBtn").click();
-    });
-
-    $("leaveRoomBtn").onclick = () => {
-      sendPacket({ leaveRoomReq: {} });
+    $("backToRoomBtn").onclick = () => {
+      gameState = null;
+      clearAsk();
+      renderView();
     };
 
     $("copyCodeBtn").onclick = async () => {
@@ -505,16 +861,14 @@
       }
     };
 
-    // 加载 proto 并自动建立连接
     async function init() {
       setConnected(false);
       try {
-        const root = await protobuf.load("/proto/message.proto");
+        const root = await protobuf.load("/proto/packet.proto");
         Packet = root.lookupType("model.Packet");
-        log("Protobuf 协议加载成功", "ok");
         connect();
       } catch (err) {
-        showError("加载 Protobuf 协议失败，请确认网络可访问 CDN 或检查服务端");
+        showError("加载 Protobuf 协议失败");
         log(`初始化失败: ${err.message}`, "err");
       }
     }

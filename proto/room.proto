@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package model;
+
+option go_package = "github.com/Frankhuex/sanguogao/model;model";
+
+import "common.proto";
+
+message RoomInfo {
+  string code = 1;
+  string host_id = 2;
+  repeated PlayerInfo players = 3;
+  bool playing = 4;
+}
+
+// 设置/修改昵称
+message SetNameReq {
+  string name = 1;
+}
+
+message SetNameResp {
+  ErrorCode code = 1;
+  string message = 2;
+  PlayerInfo self = 3;
+}
+
+// 创建房间
+message CreateRoomReq {}
+
+message CreateRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+  RoomInfo room = 3;
+}
+
+// 加入房间
+message JoinRoomReq {
+  string room_code = 1;
+}
+
+message JoinRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+  RoomInfo room = 3;
+}
+
+// 主动离开房间
+message LeaveRoomReq {}
+
+message LeaveRoomResp {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+// 连接成功欢迎推送
+message WelcomePush {
+  PlayerInfo self = 1;
+}
+
+// 房间状态变更推送
+message RoomStatePush {
+  RoomInfo room = 1;
+}

@@ -31,7 +31,16 @@ type Room struct {
 	HostID     string
 	Players    []*Player
 	MaxPlayers int
+	Playing    bool
+	Offline    map[string]bool
 	CreatedAt  time.Time
+}
+
+type DisconnectResult struct {
+	RoomInfo        *model.RoomInfo
+	NotifyIDs       []string
+	PlayingRoomCode string // 若掉线时正在对局中，返回对应房间号
+	AllOffline      bool   // 对局中所有玩家是否均已掉线
 }
 
 type Manager struct {
@@ -71,7 +80,7 @@ func (m *Manager) AddPlayer(clientID string) *model.PlayerInfo {
 	return info
 }
 
-// SetName 设置或修改玩家昵称；若玩家在房间内，返回房间快照与需要通知的其他成员 ID
+// SetName 设置或修改玩家昵称；若玩家在等待中的房间内，返回房间快照与需要通知的其他成员 ID
 func (m *Manager) SetName(clientID, rawName string) (*model.PlayerInfo, *model.RoomInfo, []string, model.ErrorCode, string) {
 	name := strings.TrimSpace(rawName)
 	runeCount := utf8.RuneCountInString(name)
@@ -90,7 +99,7 @@ func (m *Manager) SetName(clientID, rawName string) (*model.PlayerInfo, *model.R
 	self := &model.PlayerInfo{Id: p.ID, Name: p.Name}
 
 	if p.RoomCode != "" {
-		if r, exists := m.rooms[p.RoomCode]; exists {
+		if r, exists := m.rooms[p.RoomCode]; exists && !r.Playing {
 			return self, snapshotRoom(r), otherIDs(r, clientID), model.ErrorCode_ERROR_CODE_OK, ""
 		}
 	}
@@ -150,6 +159,9 @@ func (m *Manager) JoinRoom(clientID, rawCode string) (*model.RoomInfo, []string,
 	if !exists {
 		return nil, nil, model.ErrorCode_ERROR_CODE_ROOM_NOT_FOUND, "房间不存在"
 	}
+	if r.Playing {
+		return nil, nil, model.ErrorCode_ERROR_CODE_ROOM_PLAYING, "房间正在游戏中，无法加入"
+	}
 	if r.MaxPlayers > 0 && len(r.Players) >= r.MaxPlayers {
 		return nil, nil, model.ErrorCode_ERROR_CODE_ROOM_FULL, "房间已满"
 	}
@@ -172,28 +184,153 @@ func (m *Manager) LeaveRoom(clientID string) (*model.RoomInfo, []string, model.E
 	if p.RoomCode == "" {
 		return nil, nil, model.ErrorCode_ERROR_CODE_NOT_IN_ROOM, "当前不在任何房间中"
 	}
+	if r, exists := m.rooms[p.RoomCode]; exists && r.Playing {
+		return nil, nil, model.ErrorCode_ERROR_CODE_ROOM_PLAYING, "游戏进行中无法主动退出房间"
+	}
 
 	roomInfo, notifyIDs := m.leaveRoomLocked(p)
 	return roomInfo, notifyIDs, model.ErrorCode_ERROR_CODE_OK, ""
 }
 
-// RemovePlayer 玩家掉线清理：若在房间中则自动退房，并清理在线玩家记录
-func (m *Manager) RemovePlayer(clientID string) (*model.RoomInfo, []string) {
+// StartGame 由房主发起开始游戏
+func (m *Manager) StartGame(clientID string) (string, []*model.PlayerInfo, model.ErrorCode, string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	p, ok := m.players[clientID]
 	if !ok {
+		return "", nil, model.ErrorCode_ERROR_CODE_INTERNAL, "玩家状态不存在"
+	}
+	if p.RoomCode == "" {
+		return "", nil, model.ErrorCode_ERROR_CODE_NOT_IN_ROOM, "当前不在任何房间中"
+	}
+
+	r, exists := m.rooms[p.RoomCode]
+	if !exists {
+		return "", nil, model.ErrorCode_ERROR_CODE_ROOM_NOT_FOUND, "房间不存在"
+	}
+	if r.HostID != clientID {
+		return "", nil, model.ErrorCode_ERROR_CODE_NOT_HOST, "只有房主可以开始游戏"
+	}
+	if r.Playing {
+		return "", nil, model.ErrorCode_ERROR_CODE_ROOM_PLAYING, "游戏已经在进行中"
+	}
+	if len(r.Players) < 2 {
+		return "", nil, model.ErrorCode_ERROR_CODE_NOT_ENOUGH_PLAYERS, "至少需要 2 名玩家才能开始游戏"
+	}
+
+	r.Playing = true
+	r.Offline = make(map[string]bool)
+
+	players := make([]*model.PlayerInfo, len(r.Players))
+	for i, member := range r.Players {
+		players[i] = &model.PlayerInfo{Id: member.ID, Name: member.Name}
+	}
+	return r.Code, players, model.ErrorCode_ERROR_CODE_OK, ""
+}
+
+// EndGame 游戏结束后恢复房间等待状态，并清理局内已掉线的玩家
+func (m *Manager) EndGame(roomCode string) (*model.RoomInfo, []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	r, exists := m.rooms[roomCode]
+	if !exists {
 		return nil, nil
 	}
 
-	var roomInfo *model.RoomInfo
-	var notifyIDs []string
+	r.Playing = false
+	onlinePlayers := make([]*Player, 0, len(r.Players))
+	for _, p := range r.Players {
+		if r.Offline[p.ID] {
+			delete(m.players, p.ID)
+			continue
+		}
+		onlinePlayers = append(onlinePlayers, p)
+	}
+	r.Players = onlinePlayers
+	r.Offline = nil
+
+	if len(r.Players) == 0 {
+		delete(m.rooms, roomCode)
+		return nil, nil
+	}
+
+	// 若原房主已掉线被清理，顺延新房主
+	hostFound := false
+	for _, p := range r.Players {
+		if p.ID == r.HostID {
+			hostFound = true
+			break
+		}
+	}
+	if !hostFound {
+		r.HostID = r.Players[0].ID
+	}
+
+	return snapshotRoom(r), allIDs(r)
+}
+
+// GetPlayerRoom 查询玩家所在房间号及是否正在游戏中
+func (m *Manager) GetPlayerRoom(clientID string) (string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	p, ok := m.players[clientID]
+	if !ok || p.RoomCode == "" {
+		return "", false
+	}
+	r, exists := m.rooms[p.RoomCode]
+	if !exists {
+		return "", false
+	}
+	return r.Code, r.Playing
+}
+
+// RemovePlayer 玩家掉线清理：等待中自动退房，对局中标记离线（全员离线则销毁房间）
+func (m *Manager) RemovePlayer(clientID string) DisconnectResult {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	p, ok := m.players[clientID]
+	if !ok {
+		return DisconnectResult{}
+	}
+
 	if p.RoomCode != "" {
-		roomInfo, notifyIDs = m.leaveRoomLocked(p)
+		if r, exists := m.rooms[p.RoomCode]; exists && r.Playing {
+			if r.Offline == nil {
+				r.Offline = make(map[string]bool)
+			}
+			r.Offline[clientID] = true
+
+			allOffline := true
+			for _, member := range r.Players {
+				if !r.Offline[member.ID] {
+					allOffline = false
+					break
+				}
+			}
+			code := r.Code
+			if allOffline {
+				for _, member := range r.Players {
+					delete(m.players, member.ID)
+				}
+				delete(m.rooms, code)
+			}
+			return DisconnectResult{
+				PlayingRoomCode: code,
+				AllOffline:      allOffline,
+			}
+		}
+	}
+
+	var res DisconnectResult
+	if p.RoomCode != "" {
+		res.RoomInfo, res.NotifyIDs = m.leaveRoomLocked(p)
 	}
 	delete(m.players, clientID)
-	return roomInfo, notifyIDs
+	return res
 }
 
 func (m *Manager) leaveRoomLocked(p *Player) (*model.RoomInfo, []string) {
@@ -264,6 +401,7 @@ func snapshotRoom(r *Room) *model.RoomInfo {
 		Code:    r.Code,
 		HostId:  r.HostID,
 		Players: players,
+		Playing: r.Playing,
 	}
 }
 
