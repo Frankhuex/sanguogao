@@ -2,12 +2,11 @@ package ws
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/Frankhuex/sanguogao/internal/util/urandom"
 	"github.com/coder/websocket"
 )
 
@@ -31,7 +30,7 @@ type Client struct {
 func newClient(parent context.Context, conn *websocket.Conn) *Client {
 	ctx, cancel := context.WithCancel(parent)
 	return &Client{
-		ID:     generateClientID(),
+		ID:     urandom.ID(),
 		conn:   conn,
 		send:   make(chan []byte, sendQueueSize),
 		ctx:    ctx,
@@ -85,12 +84,4 @@ func (c *Client) writeLoop() {
 			}
 		}
 	}
-}
-
-func generateClientID() string {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return hex.EncodeToString([]byte(time.Now().Format("150405.000000")))
-	}
-	return hex.EncodeToString(b)
 }

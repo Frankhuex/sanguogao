@@ -11,10 +11,10 @@ import (
 
 // Manager 维护所有在线玩家与房间的内存状态（锁内仅变更状态，不做网络 IO）
 type Manager struct {
-	mu         sync.RWMutex
-	maxPlayers int
-	rooms      map[string]*Room
-	players    map[string]*Player
+	mu           sync.RWMutex
+	maxPlayers   int
+	roomIDToRoom map[string]*Room
+	players      map[string]*Player
 }
 
 func NewManager(maxPlayers int) *Manager {
@@ -22,9 +22,9 @@ func NewManager(maxPlayers int) *Manager {
 		maxPlayers = DefaultMaxPlayers
 	}
 	return &Manager{
-		maxPlayers: maxPlayers,
-		rooms:      make(map[string]*Room),
-		players:    make(map[string]*Player),
+		maxPlayers:   maxPlayers,
+		roomIDToRoom: make(map[string]*Room),
+		players:      make(map[string]*Player),
 	}
 }
 
@@ -66,7 +66,7 @@ func (m *Manager) SetName(clientID, rawName string) (*model.PlayerInfo, *model.R
 	self := &model.PlayerInfo{Id: p.ID, Name: p.Name}
 
 	if p.RoomCode != "" {
-		if r, exists := m.rooms[p.RoomCode]; exists {
+		if r, exists := m.roomIDToRoom[p.RoomCode]; exists {
 			return self, snapshotRoom(r), otherIDs(r, clientID), model.ErrorCode_ERROR_CODE_OK, ""
 		}
 	}
@@ -98,7 +98,7 @@ func (m *Manager) CreateRoom(clientID string) (*model.RoomInfo, model.ErrorCode,
 		MaxPlayers: m.maxPlayers,
 		CreatedAt:  time.Now(),
 	}
-	m.rooms[code] = r
+	m.roomIDToRoom[code] = r
 	p.RoomCode = code
 
 	return snapshotRoom(r), model.ErrorCode_ERROR_CODE_OK, ""
@@ -122,7 +122,7 @@ func (m *Manager) JoinRoom(clientID, rawCode string) (*model.RoomInfo, []string,
 		return nil, nil, model.ErrorCode_ERROR_CODE_ALREADY_IN_ROOM, "你已经在房间中，请先退出当前房间"
 	}
 
-	r, exists := m.rooms[code]
+	r, exists := m.roomIDToRoom[code]
 	if !exists {
 		return nil, nil, model.ErrorCode_ERROR_CODE_ROOM_NOT_FOUND, "房间不存在"
 	}
@@ -176,7 +176,7 @@ func (m *Manager) leaveRoomLocked(p *Player) (*model.RoomInfo, []string) {
 	code := p.RoomCode
 	p.RoomCode = ""
 
-	r, exists := m.rooms[code]
+	r, exists := m.roomIDToRoom[code]
 	if !exists {
 		return nil, nil
 	}
@@ -189,7 +189,7 @@ func (m *Manager) leaveRoomLocked(p *Player) (*model.RoomInfo, []string) {
 	}
 
 	if len(r.Players) == 0 {
-		delete(m.rooms, code)
+		delete(m.roomIDToRoom, code)
 		return nil, nil
 	}
 
