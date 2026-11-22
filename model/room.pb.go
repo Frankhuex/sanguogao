@@ -26,6 +26,7 @@ type RoomInfo struct {
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	HostId        string                 `protobuf:"bytes,2,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
 	Players       []*PlayerInfo          `protobuf:"bytes,3,rep,name=players,proto3" json:"players,omitempty"`
+	MaxPlayers    int32                  `protobuf:"varint,4,opt,name=max_players,json=maxPlayers,proto3" json:"max_players,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,6 +80,13 @@ func (x *RoomInfo) GetPlayers() []*PlayerInfo {
 		return x.Players
 	}
 	return nil
+}
+
+func (x *RoomInfo) GetMaxPlayers() int32 {
+	if x != nil {
+		return x.MaxPlayers
+	}
+	return 0
 }
 
 // 设置/修改昵称
@@ -572,11 +580,13 @@ var File_room_proto protoreflect.FileDescriptor
 const file_room_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"room.proto\x12\x05model\x1a\fcommon.proto\"d\n" +
+	"room.proto\x12\x05model\x1a\fcommon.proto\"\x85\x01\n" +
 	"\bRoomInfo\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\ahost_id\x18\x02 \x01(\tR\x06hostId\x12+\n" +
-	"\aplayers\x18\x03 \x03(\v2\x11.model.PlayerInfoR\aplayers\" \n" +
+	"\aplayers\x18\x03 \x03(\v2\x11.model.PlayerInfoR\aplayers\x12\x1f\n" +
+	"\vmax_players\x18\x04 \x01(\x05R\n" +
+	"maxPlayers\" \n" +
 	"\n" +
 	"SetNameReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"t\n" +

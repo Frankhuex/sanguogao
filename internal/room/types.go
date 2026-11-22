@@ -40,9 +40,10 @@ func snapshotRoom(r *Room) *model.RoomInfo {
 		}
 	}
 	return &model.RoomInfo{
-		Code:    r.Code,
-		HostId:  r.HostID,
-		Players: players,
+		Code:       r.Code,
+		HostId:     r.HostID,
+		Players:    players,
+		MaxPlayers: int32(r.MaxPlayers),
 	}
 }
 

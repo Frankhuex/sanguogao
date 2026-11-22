@@ -10,6 +10,7 @@ message RoomInfo {
   string code = 1;
   string host_id = 2;
   repeated PlayerInfo players = 3;
+  int32 max_players = 4;
 }
 
 // 设置/修改昵称

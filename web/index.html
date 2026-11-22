@@ -243,7 +243,7 @@
         </div>
         <button id="leaveRoomBtn" class="danger">退出房间</button>
       </div>
-      <div class="section-title">房间成员（<span id="playerCount">0</span> / 10）</div>
+      <div class="section-title">房间成员（<span id="playerCount">0</span> / <span id="maxPlayers">10</span>）</div>
       <ul id="playerList" class="player-list"></ul>
     </div>
 
@@ -303,6 +303,7 @@
 
       const players = currentRoom.players || [];
       $("playerCount").textContent = players.length;
+      $("maxPlayers").textContent = currentRoom.maxPlayers || 10;
 
       const list = $("playerList");
       list.innerHTML = "";
