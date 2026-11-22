@@ -1,8 +1,6 @@
 package room
 
 import (
-	"crypto/rand"
-	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -11,29 +9,7 @@ import (
 	"github.com/Frankhuex/sanguogao/model"
 )
 
-const (
-	DefaultMaxPlayers = 10
-	RoomCodeLength    = 6
-	MaxNameRunes      = 16
-	maxCodeRetries    = 10
-	// 剔除易混淆字符 0/O/1/I/L
-	roomCodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-)
-
-type Player struct {
-	ID       string
-	Name     string
-	RoomCode string
-}
-
-type Room struct {
-	Code       string
-	HostID     string
-	Players    []*Player
-	MaxPlayers int
-	CreatedAt  time.Time
-}
-
+// Manager 维护所有在线玩家与房间的内存状态（锁内仅变更状态，不做网络 IO）
 type Manager struct {
 	mu         sync.RWMutex
 	maxPlayers int
@@ -223,64 +199,4 @@ func (m *Manager) leaveRoomLocked(p *Player) (*model.RoomInfo, []string) {
 	}
 
 	return snapshotRoom(r), allIDs(r)
-}
-
-func (m *Manager) generateUniqueCodeLocked() (string, error) {
-	alphabetLen := big.NewInt(int64(len(roomCodeAlphabet)))
-	buf := make([]byte, RoomCodeLength)
-
-	for range maxCodeRetries {
-		for i := range RoomCodeLength {
-			n, err := rand.Int(rand.Reader, alphabetLen)
-			if err != nil {
-				return "", err
-			}
-			buf[i] = roomCodeAlphabet[n.Int64()]
-		}
-		code := string(buf)
-		if _, exists := m.rooms[code]; !exists {
-			return code, nil
-		}
-	}
-	return "", ErrCodeExhausted
-}
-
-// ErrCodeExhausted 极端情况下连续碰撞超过重试次数
-var ErrCodeExhausted = &roomError{msg: "failed to generate unique room code"}
-
-type roomError struct{ msg string }
-
-func (e *roomError) Error() string { return e.msg }
-
-func snapshotRoom(r *Room) *model.RoomInfo {
-	players := make([]*model.PlayerInfo, len(r.Players))
-	for i, p := range r.Players {
-		players[i] = &model.PlayerInfo{
-			Id:   p.ID,
-			Name: p.Name,
-		}
-	}
-	return &model.RoomInfo{
-		Code:    r.Code,
-		HostId:  r.HostID,
-		Players: players,
-	}
-}
-
-func allIDs(r *Room) []string {
-	ids := make([]string, len(r.Players))
-	for i, p := range r.Players {
-		ids[i] = p.ID
-	}
-	return ids
-}
-
-func otherIDs(r *Room, excludeID string) []string {
-	ids := make([]string, 0, len(r.Players))
-	for _, p := range r.Players {
-		if p.ID != excludeID {
-			ids = append(ids, p.ID)
-		}
-	}
-	return ids
 }

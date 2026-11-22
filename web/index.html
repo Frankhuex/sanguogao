@@ -509,7 +509,7 @@
     async function init() {
       setConnected(false);
       try {
-        const root = await protobuf.load("/proto/message.proto");
+        const root = await protobuf.load("/proto/packet.proto");
         Packet = root.lookupType("model.Packet");
         log("Protobuf 协议加载成功", "ok");
         connect();

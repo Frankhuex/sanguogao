@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Frankhuex/sanguogao/handler"
+	"github.com/Frankhuex/sanguogao/internal/handler"
+	"github.com/Frankhuex/sanguogao/internal/room"
+	"github.com/Frankhuex/sanguogao/internal/ws"
 	"github.com/Frankhuex/sanguogao/model"
-	"github.com/Frankhuex/sanguogao/room"
-	"github.com/Frankhuex/sanguogao/ws"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -100,7 +100,6 @@ func TestEndToEndRoomFlow(t *testing.T) {
 		},
 	})
 
-	// B 收到 JoinRoomResp，A 收到 RoomStatePush
 	joinResp := recvPkt(t, ctx, connB)
 	if joinResp.Seq != 2 || joinResp.GetJoinRoomResp().GetCode() != model.ErrorCode_ERROR_CODE_OK {
 		t.Fatalf("JoinRoom failed: %+v", joinResp)

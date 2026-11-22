@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Frankhuex/sanguogao/handler"
-	"github.com/Frankhuex/sanguogao/room"
-	"github.com/Frankhuex/sanguogao/ws"
+	"github.com/Frankhuex/sanguogao/internal/handler"
+	"github.com/Frankhuex/sanguogao/internal/room"
+	"github.com/Frankhuex/sanguogao/internal/ws"
 )
 
 func main() {
